@@ -160,12 +160,14 @@ void sqlcipher_activate() {
     }
   }
 
-  /* check to see if there is a provider registered at this point
-     if there no provider registered at this point, register the 
-     default provider */
-  if(sqlcipher_get_provider() == NULL) {
-    sqlcipher_provider *p = sqlcipher_malloc(sizeof(sqlcipher_provider)); 
-#if defined (SQLCIPHER_CRYPTO_CC)
+	sqlcipher_provider *p = sqlcipher_malloc(sizeof(sqlcipher_provider)); 
+#if defined (SQLCIPHER_CRYPTO_WOLFCRYPT)
+	extern int sqlcipher_wolfcrypt_setup(sqlcipher_provider *p);
+	sqlcipher_wolfcrypt_setup(p);
+#elif defined (SQLCIPHER_CRYPTO_BCRYPT)
+	extern int sqlcipher_bcrypt_setup(sqlcipher_provider *p);
+	sqlcipher_bcrypt_setup(p);
+#elif defined (SQLCIPHER_CRYPTO_CC)
     extern int sqlcipher_cc_setup(sqlcipher_provider *p);
     sqlcipher_cc_setup(p);
 #elif defined (SQLCIPHER_CRYPTO_LIBTOMCRYPT)
@@ -178,15 +180,14 @@ void sqlcipher_activate() {
     extern int sqlcipher_openssl_setup(sqlcipher_provider *p);
     sqlcipher_openssl_setup(p);
 #else
-#error "NO DEFAULT SQLCIPHER CRYPTO PROVIDER DEFINED"
-#endif
+	#error "NO DEFAULT SQLCIPHER CRYPTO PROVIDER DEFINED"
+#endif /* SQLCIPHER_CRYPTO_* */
     CODEC_TRACE("sqlcipher_activate: calling sqlcipher_register_provider(%p)\n", p);
 #ifdef SQLCIPHER_EXT
     sqlcipher_ext_provider_setup(p);
 #endif
     sqlcipher_register_provider(p);
     CODEC_TRACE("sqlcipher_activate: called sqlcipher_register_provider(%p)\n",p);
-  }
 
   sqlcipher_activate_count++; /* increment activation count */
 
