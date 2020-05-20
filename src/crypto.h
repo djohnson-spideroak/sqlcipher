@@ -51,12 +51,29 @@ void sqlite3pager_error(Pager*, int);
 void sqlite3pager_reset(Pager *pPager);
 /* end extensions defined in pager.c */
 
-#if !defined (SQLCIPHER_CRYPTO_CC) \
+#if   !defined (SQLCIPHER_CRYPTO_WOLFCRYPT)   \
+   && !defined (SQLCIPHER_CRYPTO_BCRYPT)      \
+   && !defined (SQLCIPHER_CRYPTO_CC)          \
    && !defined (SQLCIPHER_CRYPTO_LIBTOMCRYPT) \
-   && !defined (SQLCIPHER_CRYPTO_NSS) \
+   && !defined (SQLCIPHER_CRYPTO_NSS)         \
    && !defined (SQLCIPHER_CRYPTO_OPENSSL)
-#define SQLCIPHER_CRYPTO_OPENSSL
+	#define SQLCIPHER_CRYPTO_DEFAULT
 #endif
+
+#if defined(SQLCIPHER_CRYPTO_DEFAULT)
+	/* Default to CommonCrypto on macOS, etc. */
+	#if defined(__APPLE__)
+		#define SQLCIPHER_CRYPTO_CC
+	/* Default to OpenSSL on Linux. */
+	#elif defined(__linux__)
+		#define SQLCIPHER_CRYPTO_OPENSSL
+	/* Default to BCrypt (CNG) on Windows. */
+	#elif (defined(_WIN64) || defined(_WIN32))
+		#define SQLCIPHER_CRYPTO_BCRYPT
+	#else
+		#error "unable to select default crypto library"
+	#endif
+#endif /* SQLCIPHER_CRYPTO_DEFAULT */
 
 #define FILE_HEADER_SZ 16
 

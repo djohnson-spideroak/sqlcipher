@@ -338,6 +338,8 @@ foreach file {
    crypto_nss.c
    crypto_openssl.c
    crypto_cc.c
+   crypto_wolfcrypt.c
+   crypto_bcrypt.c
 
    global.c
    status.c
