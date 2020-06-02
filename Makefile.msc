@@ -1284,6 +1284,8 @@ SRC00 = \
 	$(TOP)\src\crypto_libtomcrypt.c \
 	$(TOP)\src\crypto_nss.c \
 	$(TOP)\src\crypto_openssl.c \
+	$(TOP)\src\crypto_wolfcrypt.c \
+	$(TOP)\src\crypto_bcrypt.c \
 	$(TOP)\src\crypto.h \
 	$(TOP)\src\sqlcipher.h \
   $(TOP)\src\alter.c \
