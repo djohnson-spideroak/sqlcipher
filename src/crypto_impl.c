@@ -299,10 +299,10 @@ void sqlcipher_mlock(void *ptr, u64 sz) {
 #elif defined(_WIN32)
 #if !(defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP || WINAPI_FAMILY == WINAPI_FAMILY_APP))
   int rc;
-  CODEC_TRACE("sqlcipher_mem_lock: calling VirtualLock(%p,%d)\n", ptr, sz);
+  CODEC_TRACE("sqlcipher_mem_lock: calling VirtualLock(%p,%I64d)\n", ptr, sz);
   rc = VirtualLock(ptr, sz);
   if(rc==0) {
-    CODEC_TRACE("sqlcipher_mem_lock: VirtualLock(%p,%d) returned %d LastError=%d\n", ptr, sz, rc, GetLastError());
+    CODEC_TRACE("sqlcipher_mem_lock: VirtualLock(%p,%I64d) returned %d LastError=%lu\n", ptr, sz, rc, GetLastError());
   }
 #endif
 #endif
@@ -326,10 +326,10 @@ void sqlcipher_munlock(void *ptr, u64 sz) {
 #elif defined(_WIN32)
 #if !(defined(WINAPI_FAMILY) && (WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP || WINAPI_FAMILY == WINAPI_FAMILY_APP))
   int rc;
-  CODEC_TRACE("sqlcipher_mem_lock: calling VirtualUnlock(%p,%d)\n", ptr, sz);
+  CODEC_TRACE("sqlcipher_mem_lock: calling VirtualUnlock(%p,%I64d)\n", ptr, sz);
   rc = VirtualUnlock(ptr, sz);
   if(!rc) {
-    CODEC_TRACE("sqlcipher_mem_unlock: VirtualUnlock(%p,%d) returned %d LastError=%d\n", ptr, sz, rc, GetLastError());
+    CODEC_TRACE("sqlcipher_mem_unlock: VirtualUnlock(%p,%I64d) returned %d LastError=%lu\n", ptr, sz, rc, GetLastError());
   }
 #endif
 #endif
