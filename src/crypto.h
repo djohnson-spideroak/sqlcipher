@@ -142,6 +142,12 @@ void sqlite3pager_reset(Pager *pPager);
 #define CODEC_TRACE(...)
 #endif
 
+#if defined(CODEC_DEBUG_VERBOSE)
+	#define CODEC_TRACE_VERBOSE(...) CODEC_TRACE(__VA_ARGS__)
+#else
+	#define CODEC_TRACE_VERBOSE(...)
+#endif /* defined(CODEC_DEBUG_VERBOSE) */
+
 #ifdef CODEC_DEBUG_MUTEX
 #define CODEC_TRACE_MUTEX(...)  CODEC_TRACE(__VA_ARGS__)
 #else
