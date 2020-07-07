@@ -161,7 +161,10 @@ void sqlcipher_activate() {
   }
 
 	sqlcipher_provider *p = sqlcipher_malloc(sizeof(sqlcipher_provider)); 
-#if defined (SQLCIPHER_CRYPTO_WOLFCRYPT)
+#if defined (SQLCIPHER_CRYPTO_NONE)
+	extern int sqlcipher_none_setup(sqlcipher_provider *p);
+	sqlcipher_none_setup(p);
+#elif defined (SQLCIPHER_CRYPTO_WOLFCRYPT)
 	extern int sqlcipher_wolfcrypt_setup(sqlcipher_provider *p);
 	sqlcipher_wolfcrypt_setup(p);
 #elif defined (SQLCIPHER_CRYPTO_BCRYPT)

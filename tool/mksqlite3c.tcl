@@ -305,6 +305,7 @@ foreach file {
    crypto_cc.c
    crypto_wolfcrypt.c
    crypto_bcrypt.c
+   crypto_none.c
 
    global.c
    status.c

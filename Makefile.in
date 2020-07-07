@@ -163,7 +163,8 @@ CRYPTOSRC = \
 	$(TOP)/src/crypto_openssl.c \
 	$(TOP)/src/crypto_cc.c \
 	$(TOP)/src/crypto_wolfcrypt.c \
-	$(TOP)/src/crypto_bcrypt.c
+	$(TOP)/src/crypto_bcrypt.c \
+	$(TOP)/src/crypto_none.c
 
 # END CRYPTO
 
@@ -835,6 +836,8 @@ crypto_wolfcrypt.lo:	$(TOP)/src/crypto_wolfcrypt.c $(HDR)
 	$(LTCOMPILE) -c $(TOP)/src/crypto_wolfcrypt.c
 crypto_bcrypt.lo:	$(TOP)/src/crypto_bcrypt.c $(HDR)
 	$(LTCOMPILE) -c $(TOP)/src/crypto_bcrypt.c
+crypto_none.lo: $(TOP)/src/crypto_none.c $(HDR)
+	$(LTCOMPILE) -c $(TOP)/src/crypto_none.c
 # END CRYPTO
 
 # Rules to build individual *.o files from files in the src directory.
