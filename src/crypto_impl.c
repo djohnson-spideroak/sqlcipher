@@ -669,6 +669,7 @@ int sqlcipher_codec_ctx_set_plaintext_header_size(codec_ctx *ctx, int size) {
     ctx->plaintext_header_sz = size;
     return SQLITE_OK;
   }
+  ctx->plaintext_header_sz = -1;
   return SQLITE_ERROR;
 } 
 
@@ -1282,6 +1283,9 @@ int sqlcipher_codec_ctx_integrity_check(codec_ctx *ctx, Parse *pParse, char *col
     int payload_sz = ctx->page_sz - ctx->reserve_sz + ctx->iv_sz;
     int read_sz = ctx->page_sz;
 
+    /* skip integrity check on PAGER_MJ_PGNO since it will have no valid content */
+    if(sqlite3pager_is_mj_pgno(ctx->pBt->pBt->pPager, page)) continue;
+
     if(page==1) {
       int page1_offset = ctx->plaintext_header_sz ? ctx->plaintext_header_sz : FILE_HEADER_SZ;
       read_sz = read_sz - page1_offset;
@@ -1423,7 +1427,7 @@ migrate:
   pDb = &(db->aDb[db->nDb-1]);
   pSrc = pDb->pBt;
 
-  nRes = sqlite3BtreeGetOptimalReserve(pSrc); 
+  nRes = sqlite3BtreeGetRequestedReserve(pSrc);
   /* unset the BTS_PAGESIZE_FIXED flag to avoid SQLITE_READONLY */
   pDest->pBt->btsFlags &= ~BTS_PAGESIZE_FIXED; 
   rc = sqlite3BtreeSetPageSize(pDest, default_page_size, nRes, 0);
@@ -1535,11 +1539,13 @@ int sqlcipher_codec_add_random(codec_ctx *ctx, const char *zRight, int random_sz
   return SQLITE_ERROR;
 }
 
+#if !defined(SQLITE_OMIT_TRACE) && !defined(SQLITE_OMIT_DEPRECATED)
 static void sqlcipher_profile_callback(void *file, const char *sql, sqlite3_uint64 run_time){
   FILE *f = (FILE*)file;
   double elapsed = run_time/1000000.0;
   if(f) fprintf(f, "Elapsed time:%.3f ms - %s\n", elapsed, sql);
 }
+#endif
 
 int sqlcipher_cipher_profile(sqlite3 *db, const char *destination){
 #if defined(SQLITE_OMIT_TRACE) || defined(SQLITE_OMIT_DEPRECATED)

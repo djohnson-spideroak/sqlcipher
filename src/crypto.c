@@ -1,4 +1,4 @@
-/* 
+/*
 ** SQLCipher
 ** http://sqlcipher.net
 ** 
@@ -37,6 +37,11 @@
 
 #ifdef SQLCIPHER_EXT
 #include "sqlcipher_ext.h"
+#endif
+
+#ifdef SQLCIPHER_TEST
+static int cipher_fail_next_encrypt = 0;
+static int cipher_fail_next_decrypt = 0;
 #endif
 
 /* Generate code to return a string value */
@@ -111,6 +116,24 @@ int sqlcipher_codec_pragma(sqlite3* db, int iDb, Parse *pParse, const char *zLef
       }
   } else
 #endif
+#ifdef SQLCIPHER_TEST
+  if( sqlite3StrICmp(zLeft,"cipher_fail_next_encrypt")==0 ){
+    if( zRight ) {
+      cipher_fail_next_encrypt = sqlite3GetBoolean(zRight,1);
+    } else {
+      char *fail = sqlite3_mprintf("%d", cipher_fail_next_encrypt);
+      codec_vdbe_return_string(pParse, "cipher_fail_next_encrypt", fail, P4_DYNAMIC);
+    }
+  }else
+  if( sqlite3StrICmp(zLeft,"cipher_fail_next_decrypt")==0 ){
+    if( zRight ) {
+      cipher_fail_next_decrypt = sqlite3GetBoolean(zRight,1);
+    } else {
+      char *fail = sqlite3_mprintf("%d", cipher_fail_next_decrypt);
+      codec_vdbe_return_string(pParse, "cipher_fail_next_decrypt", fail, P4_DYNAMIC);
+    }
+  }else
+#endif
   if( sqlite3StrICmp(zLeft, "cipher_fips_status")== 0 && !zRight ){
     if(ctx) {
       char *fips_mode_status = sqlite3_mprintf("%d", sqlcipher_codec_fips_status(ctx));
@@ -119,7 +142,10 @@ int sqlcipher_codec_pragma(sqlite3* db, int iDb, Parse *pParse, const char *zLef
   } else
   if( sqlite3StrICmp(zLeft, "cipher_store_pass")==0 && zRight ) {
     if(ctx) {
+      char *deprecation = "PRAGMA cipher_store_pass is deprecated, please remove from use";
       sqlcipher_codec_set_store_pass(ctx, sqlite3GetBoolean(zRight, 1));
+      codec_vdbe_return_string(pParse, "cipher_store_pass", deprecation, P4_TRANSIENT);
+      sqlite3_log(SQLITE_WARNING, deprecation);
     }
   } else
   if( sqlite3StrICmp(zLeft, "cipher_store_pass")==0 && !zRight ) {
@@ -304,8 +330,9 @@ int sqlcipher_codec_pragma(sqlite3* db, int iDb, Parse *pParse, const char *zLef
     if(ctx) {
       if( zRight ) {
         int size = atoi(zRight);
-        if((rc = sqlcipher_codec_ctx_set_plaintext_header_size(ctx, size)) != SQLITE_OK)
-          sqlcipher_codec_ctx_set_error(ctx, SQLITE_ERROR); 
+        /* deliberately ignore result code, if size is invalid it will be set to -1
+           and trip the error later in the codec */
+        sqlcipher_codec_ctx_set_plaintext_header_size(ctx, size);
       } else {
         char *size = sqlite3_mprintf("%d", sqlcipher_codec_ctx_get_plaintext_header_size(ctx));
         codec_vdbe_return_string(pParse, "cipher_plaintext_header_size", size, P4_DYNAMIC);
@@ -318,7 +345,6 @@ int sqlcipher_codec_pragma(sqlite3* db, int iDb, Parse *pParse, const char *zLef
     } else {
       char *size = sqlite3_mprintf("%d", sqlcipher_get_default_plaintext_header_size());
       codec_vdbe_return_string(pParse, "cipher_default_plaintext_header_size", size, P4_DYNAMIC);
-      sqlite3_free(size);
     }
   }else
   if( sqlite3StrICmp(zLeft,"cipher_salt")==0 ){
@@ -672,6 +698,14 @@ static void* sqlite3Codec(void *iCtx, void *data, Pgno pgno, int mode) {
    return NULL;
   }
 
+  /* if the plaintext_header_size is negative that means an invalid size was set via 
+     PRAGMA. We can't set the error state on the pager at that point because the pager
+     may not be open yet. However, this is a fatal error state, so abort the codec */
+  if(plaintext_header_sz < 0) {
+    sqlcipher_codec_ctx_set_error(ctx, SQLITE_ERROR);
+    return NULL;
+  }
+
   if(pgno == 1) /* adjust starting pointers in data page for header offset on first page*/   
     offset = plaintext_header_sz ? plaintext_header_sz : FILE_HEADER_SZ; 
   
@@ -683,6 +717,9 @@ static void* sqlite3Codec(void *iCtx, void *data, Pgno pgno, int mode) {
         memcpy(buffer, plaintext_header_sz ? pData : (void *) SQLITE_FILE_HEADER, offset); 
 
       rc = sqlcipher_page_cipher(ctx, cctx, pgno, CIPHER_DECRYPT, page_sz - offset, pData + offset, (unsigned char*)buffer + offset);
+#ifdef SQLCIPHER_TEST
+      if(cipher_fail_next_decrypt) rc = SQLITE_ERROR;
+#endif
       if(rc != SQLITE_OK) { /* clear results of failed cipher operation and set error */
         sqlcipher_memset((unsigned char*) buffer+offset, 0, page_sz-offset);
         sqlcipher_codec_ctx_set_error(ctx, rc);
@@ -705,9 +742,13 @@ static void* sqlite3Codec(void *iCtx, void *data, Pgno pgno, int mode) {
         memcpy(buffer, plaintext_header_sz ? pData : kdf_salt, offset); 
       }
       rc = sqlcipher_page_cipher(ctx, cctx, pgno, CIPHER_ENCRYPT, page_sz - offset, pData + offset, (unsigned char*)buffer + offset);
+#ifdef SQLCIPHER_TEST
+      if(cipher_fail_next_encrypt) rc = SQLITE_ERROR;
+#endif
       if(rc != SQLITE_OK) { /* clear results of failed cipher operation and set error */
         sqlcipher_memset((unsigned char*)buffer+offset, 0, page_sz-offset);
         sqlcipher_codec_ctx_set_error(ctx, rc);
+        return NULL;
       }
       return buffer; /* return persistent buffer data, pData remains intact */
       break;
@@ -937,8 +978,6 @@ void sqlite3CodecGetKey(sqlite3* db, int nDb, void **zKey, int *nKey) {
   }
 }
 
-#ifndef OMIT_EXPORT
-
 /*
  * Implementation of an "export" function that allows a caller
  * to duplicate the main database to an attached database. This is intended
@@ -1026,7 +1065,6 @@ void sqlcipher_exportFunc(sqlite3_context *context, int argc, sqlite3_value **ar
   int saved_nChange = db->nChange;      /* Saved value of db->nChange */
   int saved_nTotalChange = db->nTotalChange; /* Saved value of db->nTotalChange */
   u8 saved_mTrace = db->mTrace;        /* Saved value of db->mTrace */
-  int (*saved_xTrace)(u32,void*,void*,void*) = db->xTrace; /* Saved db->xTrace */
   int rc = SQLITE_OK;     /* Return code from service routines */
   char *zSql = NULL;         /* SQL statements */
   char *pzErrMsg = NULL;
@@ -1037,13 +1075,29 @@ void sqlcipher_exportFunc(sqlite3_context *context, int argc, sqlite3_value **ar
     goto end_of_export;
   }
 
-  targetDb = (const char*) sqlite3_value_text(argv[0]);
-  sourceDb = (argc == 2) ? (char *) sqlite3_value_text(argv[1]) : "main";
+  if(sqlite3_value_type(argv[0]) == SQLITE_NULL) {
+    rc = SQLITE_ERROR;
+    pzErrMsg = sqlite3_mprintf("target database can't be NULL");
+    goto end_of_export;
+  }
+
+  targetDb = (const char*) sqlite3_value_text(argv[0]); 
+  sourceDb = "main";
+
+  if(argc == 2) {
+    if(sqlite3_value_type(argv[1]) == SQLITE_NULL) {
+      rc = SQLITE_ERROR;
+      pzErrMsg = sqlite3_mprintf("target database can't be NULL");
+      goto end_of_export;
+    }
+    sourceDb = (char *) sqlite3_value_text(argv[1]);
+  }
+
 
   /* if the name of the target is not main, but the index returned is zero 
      there is a mismatch and we should not proceed */
   targetDb_idx =  sqlcipher_find_db_index(db, targetDb);
-  if(targetDb_idx == 0 && sqlite3StrICmp("main", targetDb) != 0) {
+  if(targetDb_idx == 0 && targetDb != NULL && sqlite3StrICmp("main", targetDb) != 0) {
     rc = SQLITE_ERROR;
     pzErrMsg = sqlite3_mprintf("unknown database %s", targetDb);
     goto end_of_export;
@@ -1053,7 +1107,6 @@ void sqlcipher_exportFunc(sqlite3_context *context, int argc, sqlite3_value **ar
   db->flags |= SQLITE_WriteSchema | SQLITE_IgnoreChecks; 
   db->mDbFlags |= DBFLAG_PreferBuiltin | DBFLAG_Vacuum;
   db->flags &= ~(u64)(SQLITE_ForeignKeys | SQLITE_ReverseOrder | SQLITE_Defensive | SQLITE_CountRows); 
-  db->xTrace = 0;
   db->mTrace = 0;
 
   /* Query the schema of the main database. Create a mirror schema
@@ -1061,7 +1114,7 @@ void sqlcipher_exportFunc(sqlite3_context *context, int argc, sqlite3_value **ar
   */
   zSql = sqlite3_mprintf(
     "SELECT sql "
-    "  FROM %s.sqlite_master WHERE type='table' AND name!='sqlite_sequence'"
+    "  FROM %s.sqlite_schema WHERE type='table' AND name!='sqlite_sequence'"
     "   AND rootpage>0"
   , sourceDb);
   rc = (zSql == NULL) ? SQLITE_NOMEM : sqlcipher_execExecSql(db, &pzErrMsg, zSql); 
@@ -1070,7 +1123,7 @@ void sqlcipher_exportFunc(sqlite3_context *context, int argc, sqlite3_value **ar
 
   zSql = sqlite3_mprintf(
     "SELECT sql "
-    "  FROM %s.sqlite_master WHERE sql LIKE 'CREATE INDEX %%' "
+    "  FROM %s.sqlite_schema WHERE sql LIKE 'CREATE INDEX %%' "
   , sourceDb);
   rc = (zSql == NULL) ? SQLITE_NOMEM : sqlcipher_execExecSql(db, &pzErrMsg, zSql); 
   if( rc!=SQLITE_OK ) goto end_of_export;
@@ -1078,7 +1131,7 @@ void sqlcipher_exportFunc(sqlite3_context *context, int argc, sqlite3_value **ar
 
   zSql = sqlite3_mprintf(
     "SELECT sql "
-    "  FROM %s.sqlite_master WHERE sql LIKE 'CREATE UNIQUE INDEX %%'"
+    "  FROM %s.sqlite_schema WHERE sql LIKE 'CREATE UNIQUE INDEX %%'"
   , sourceDb);
   rc = (zSql == NULL) ? SQLITE_NOMEM : sqlcipher_execExecSql(db, &pzErrMsg, zSql); 
   if( rc!=SQLITE_OK ) goto end_of_export;
@@ -1091,7 +1144,7 @@ void sqlcipher_exportFunc(sqlite3_context *context, int argc, sqlite3_value **ar
   zSql = sqlite3_mprintf(
     "SELECT 'INSERT INTO %s.' || quote(name) "
     "|| ' SELECT * FROM %s.' || quote(name) || ';'"
-    "FROM %s.sqlite_master "
+    "FROM %s.sqlite_schema "
     "WHERE type = 'table' AND name!='sqlite_sequence' "
     "  AND rootpage>0"
   , targetDb, sourceDb, sourceDb);
@@ -1104,7 +1157,7 @@ void sqlcipher_exportFunc(sqlite3_context *context, int argc, sqlite3_value **ar
   zSql = sqlite3_mprintf(
     "SELECT 'INSERT INTO %s.' || quote(name) "
     "|| ' SELECT * FROM %s.' || quote(name) || ';' "
-    "FROM %s.sqlite_master WHERE name=='sqlite_sequence';"
+    "FROM %s.sqlite_schema WHERE name=='sqlite_sequence';"
   , targetDb, sourceDb, targetDb);
   rc = (zSql == NULL) ? SQLITE_NOMEM : sqlcipher_execExecSql(db, &pzErrMsg, zSql); 
   if( rc!=SQLITE_OK ) goto end_of_export;
@@ -1116,9 +1169,9 @@ void sqlcipher_exportFunc(sqlite3_context *context, int argc, sqlite3_value **ar
   ** from the SQLITE_MASTER table.
   */
   zSql = sqlite3_mprintf(
-    "INSERT INTO %s.sqlite_master "
+    "INSERT INTO %s.sqlite_schema "
     "  SELECT type, name, tbl_name, rootpage, sql"
-    "    FROM %s.sqlite_master"
+    "    FROM %s.sqlite_schema"
     "   WHERE type='view' OR type='trigger'"
     "      OR (type='table' AND rootpage=0)"
   , targetDb, sourceDb);
@@ -1133,7 +1186,6 @@ end_of_export:
   db->mDbFlags = saved_mDbFlags;
   db->nChange = saved_nChange;
   db->nTotalChange = saved_nTotalChange;
-  db->xTrace = saved_xTrace;
   db->mTrace = saved_mTrace;
 
   if(zSql) sqlite3_free(zSql);
@@ -1147,8 +1199,5 @@ end_of_export:
     }
   }
 }
-
 #endif
-
 /* END SQLCIPHER */
-#endif

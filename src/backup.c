@@ -112,7 +112,7 @@ static Btree *findBtree(sqlite3 *pErrorDb, sqlite3 *pDb, const char *zDb){
 */
 static int setDestPgsz(sqlite3_backup *p){
   int rc;
-  rc = sqlite3BtreeSetPageSize(p->pDest,sqlite3BtreeGetPageSize(p->pSrc),-1,0);
+  rc = sqlite3BtreeSetPageSize(p->pDest,sqlite3BtreeGetPageSize(p->pSrc),0,0);
   return rc;
 }
 
@@ -123,7 +123,7 @@ static int setDestPgsz(sqlite3_backup *p){
 ** message in database handle db.
 */
 static int checkReadTransaction(sqlite3 *db, Btree *p){
-  if( sqlite3BtreeIsInReadTrans(p) ){
+  if( sqlite3BtreeTxnState(p)!=SQLITE_TXN_NONE ){
     sqlite3ErrorWithMsg(db, SQLITE_ERROR, "destination database is in use");
     return SQLITE_ERROR;
   }
@@ -256,13 +256,15 @@ static int backupOnePage(
   int nDestPgsz = sqlite3BtreeGetPageSize(p->pDest);
   const int nCopy = MIN(nSrcPgsz, nDestPgsz);
   const i64 iEnd = (i64)iSrcPg*(i64)nSrcPgsz;
+/* BEGIN SQLCIPHER */
 #ifdef SQLITE_HAS_CODEC
   /* Use BtreeGetReserveNoMutex() for the source b-tree, as although it is
   ** guaranteed that the shared-mutex is held by this thread, handle
   ** p->pSrc may not actually be the owner.  */
   int nSrcReserve = sqlite3BtreeGetReserveNoMutex(p->pSrc);
-  int nDestReserve = sqlite3BtreeGetOptimalReserve(p->pDest);
+  int nDestReserve = sqlite3BtreeGetRequestedReserve(p->pDest);
 #endif
+/* END SQLCIPHER */
   int rc = SQLITE_OK;
   i64 iOff;
 
@@ -279,6 +281,7 @@ static int backupOnePage(
     rc = SQLITE_READONLY;
   }
 
+/* BEGIN SQLCIPHER */
 #ifdef SQLITE_HAS_CODEC
   /* Backup is not possible if the page size of the destination is changing
   ** and a codec is in use.
@@ -298,6 +301,7 @@ static int backupOnePage(
     if( rc==SQLITE_OK && newPgsz!=(u32)nSrcPgsz ) rc = SQLITE_READONLY;
   }
 #endif
+/* END SQLCIPHER */
 
   /* This loop runs once for each destination page spanned by the source 
   ** page. For each iteration, variable iOff is set to the byte offset
@@ -402,7 +406,7 @@ int sqlite3_backup_step(sqlite3_backup *p, int nPage){
     ** one now. If a transaction is opened here, then it will be closed
     ** before this function exits.
     */
-    if( rc==SQLITE_OK && 0==sqlite3BtreeIsInReadTrans(p->pSrc) ){
+    if( rc==SQLITE_OK && SQLITE_TXN_NONE==sqlite3BtreeTxnState(p->pSrc) ){
       rc = sqlite3BtreeBeginTrans(p->pSrc, 0, 0);
       bCloseTrans = 1;
     }
@@ -774,7 +778,7 @@ int sqlite3BtreeCopyFile(Btree *pTo, Btree *pFrom){
   sqlite3BtreeEnter(pTo);
   sqlite3BtreeEnter(pFrom);
 
-  assert( sqlite3BtreeIsInTrans(pTo) );
+  assert( sqlite3BtreeTxnState(pTo)==SQLITE_TXN_WRITE );
   pFd = sqlite3PagerFile(sqlite3BtreePager(pTo));
   if( pFd->pMethods ){
     i64 nByte = sqlite3BtreeGetPageSize(pFrom)*(i64)sqlite3BtreeLastPage(pFrom);
@@ -794,9 +798,11 @@ int sqlite3BtreeCopyFile(Btree *pTo, Btree *pFrom){
   b.pDest = pTo;
   b.iNext = 1;
 
+/* BEGIN SQLCIPHER */
 #ifdef SQLITE_HAS_CODEC
   sqlite3PagerAlignReserve(sqlite3BtreePager(pTo), sqlite3BtreePager(pFrom));
 #endif
+/* END SQLCIPHER */
 
   /* 0x7FFFFFFF is the hard limit for the number of pages in a database
   ** file. By passing this as the number of pages to copy to
@@ -814,7 +820,7 @@ int sqlite3BtreeCopyFile(Btree *pTo, Btree *pFrom){
     sqlite3PagerClearCache(sqlite3BtreePager(b.pDest));
   }
 
-  assert( sqlite3BtreeIsInTrans(pTo)==0 );
+  assert( sqlite3BtreeTxnState(pTo)!=SQLITE_TXN_WRITE );
 copy_finished:
   sqlite3BtreeLeave(pFrom);
   sqlite3BtreeLeave(pTo);
