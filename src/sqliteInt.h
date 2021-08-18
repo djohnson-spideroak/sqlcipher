@@ -1020,6 +1020,16 @@ extern u32 sqlite3SelectTrace;
 # define SELECTTRACE(K,P,S,X)
 # define SELECTTRACE_ENABLED 0
 #endif
+#if defined(SQLITE_ENABLE_SELECTTRACE)
+# define SELECTTRACE_ENABLED 1
+# define SELECTTRACE(K,P,S,X)  \
+  if(sqlite3_unsupported_selecttrace&(K))   \
+    sqlite3DebugPrintf("%u/%d/%p: ",(S)->selId,(P)->addrExplain,(S)),\
+    sqlite3DebugPrintf X
+#else
+# define SELECTTRACE(K,P,S,X)
+# define SELECTTRACE_ENABLED 0
+#endif
 
 /*
 ** Macros for "wheretrace"
@@ -4898,6 +4908,7 @@ extern const unsigned char *sqlite3aGTb;
 extern const unsigned char sqlite3CtypeMap[];
 extern SQLITE_WSD struct Sqlite3Config sqlite3Config;
 extern FuncDefHash sqlite3BuiltinFunctions;
+extern u32 sqlite3_unsupported_selecttrace;
 #ifndef SQLITE_OMIT_WSD
 extern int sqlite3PendingByte;
 #endif

@@ -226,6 +226,7 @@ typedef struct yyParser yyParser;
 #include <assert.h>
 #ifndef NDEBUG
 #include <stdio.h>
+#include <assert.h>
 static FILE *yyTraceFILE = 0;
 static char *yyTracePrompt = 0;
 #endif /* NDEBUG */

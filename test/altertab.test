@@ -982,3 +982,4 @@ do_catchsql_test 32.0 {
 } {1 {error in trigger r1: no tables specified}}
 
 finish_test
+

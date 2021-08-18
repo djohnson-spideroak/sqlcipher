@@ -303,6 +303,22 @@ static void sqlite3ErrorIfNotEmpty(
 }
 
 /*
+** Write code that will raise an error if the table described by
+** zDb and zTab is not empty.
+*/
+static void sqlite3ErrorIfNotEmpty(
+  Parse *pParse,        /* Parsing context */
+  const char *zDb,      /* Schema holding the table */
+  const char *zTab,     /* Table to check for empty */
+  const char *zErr      /* Error message text */
+){
+  sqlite3NestedParse(pParse,
+     "SELECT raise(ABORT,%Q) FROM \"%w\".\"%w\"",
+     zErr, zDb, zTab
+  );
+}
+
+/*
 ** This function is called after an "ALTER TABLE ... ADD" statement
 ** has been parsed. Argument pColDef contains the text of the new
 ** column definition.
@@ -858,6 +874,21 @@ static void unmapColumnIdlistNames(
     int ii;
     for(ii=0; ii<pIdList->nId; ii++){
       sqlite3RenameTokenRemap(pParse, 0, (const void*)pIdList->a[ii].zName);
+    }
+  }
+}
+
+/*
+** Unmap all tokens in the IdList object passed as the second argument.
+*/
+static void unmapColumnIdlistNames(
+  Parse *pParse,
+  IdList *pIdList
+){
+  if( pIdList ){
+    int ii;
+    for(ii=0; ii<pIdList->nId; ii++){
+      sqlite3RenameTokenRemap(pParse, 0, (void*)pIdList->a[ii].zName);
     }
   }
 }

@@ -460,6 +460,39 @@ static void readtextfileFunc(
 }
 
 /*
+** Implementation of the "readtextfile(X)" SQL function.  The text content
+** of the file named X through the end of the file or to the first \000
+** character, whichever comes first, is read and returned as TEXT.  NULL
+** is returned if the file does not exist or is unreadable.
+*/
+static void readtextfileFunc(
+  sqlite3_context *context,
+  int argc,
+  sqlite3_value **argv
+){
+  const char *zName;
+  FILE *in;
+  long nIn;
+  char *pBuf;
+
+  zName = (const char*)sqlite3_value_text(argv[0]);
+  if( zName==0 ) return;
+  in = fopen(zName, "rb");
+  if( in==0 ) return;
+  fseek(in, 0, SEEK_END);
+  nIn = ftell(in);
+  rewind(in);
+  pBuf = sqlite3_malloc64( nIn+1 );
+  if( pBuf && 1==fread(pBuf, nIn, 1, in) ){
+    pBuf[nIn] = 0;
+    sqlite3_result_text(context, pBuf, -1, sqlite3_free);
+  }else{
+    sqlite3_free(pBuf);
+  }
+  fclose(in);
+}
+
+/*
 ** Implementation of the "writefile(X,Y)" SQL function.  The argument Y
 ** is written into file X.  The number of bytes written is returned.  Or
 ** NULL is returned if something goes wrong, such as being unable to open

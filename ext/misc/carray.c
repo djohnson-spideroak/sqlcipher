@@ -75,6 +75,14 @@ SQLITE_EXTENSION_INIT1
 # endif
 #endif
 
+/* Allowed values for the mFlags parameter to sqlite3_carray_bind().
+** Must exactly match the definitions in carray.h.
+*/
+#define CARRAY_INT32     0      /* Data is 32-bit signed integers */
+#define CARRAY_INT64     1      /* Data is 64-bit signed integers */
+#define CARRAY_DOUBLE    2      /* Data is doubles */
+#define CARRAY_TEXT      3      /* Data is char* */
+
 #ifndef SQLITE_OMIT_VIRTUALTABLE
 
 /*
