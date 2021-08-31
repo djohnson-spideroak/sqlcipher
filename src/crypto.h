@@ -53,6 +53,7 @@ void sqlite3pager_reset(Pager *pPager);
 
 #if   !defined (SQLCIPHER_CRYPTO_NONE)        \
    && !defined (SQLCIPHER_CRYPTO_WOLFCRYPT)   \
+   && !defined (SQLCIPHER_CRYPTO_BORING)   \
    && !defined (SQLCIPHER_CRYPTO_BCRYPT)      \
    && !defined (SQLCIPHER_CRYPTO_CC)          \
    && !defined (SQLCIPHER_CRYPTO_LIBTOMCRYPT) \

@@ -151,7 +151,9 @@ CRYPTOLIBOBJ = \
   crypto_nss.lo \
   crypto_cc.lo \
   crypto_wolfcrypt.lo \
-  crypto_bcrypt.lo
+  crypto_boring.lo \
+  crypto_bcrypt.lo \
+  crypto_none.lo 
 
 CRYPTOSRC = \
   $(TOP)/src/crypto.h \
@@ -163,6 +165,7 @@ CRYPTOSRC = \
 	$(TOP)/src/crypto_openssl.c \
 	$(TOP)/src/crypto_cc.c \
 	$(TOP)/src/crypto_wolfcrypt.c \
+	$(TOP)/src/crypto_boring.c \
 	$(TOP)/src/crypto_bcrypt.c \
 	$(TOP)/src/crypto_none.c
 
@@ -844,6 +847,8 @@ crypto_cc.lo:	$(TOP)/src/crypto_cc.c $(HDR)
 	$(LTCOMPILE) -c $(TOP)/src/crypto_cc.c
 crypto_wolfcrypt.lo:	$(TOP)/src/crypto_wolfcrypt.c $(HDR)
 	$(LTCOMPILE) -c $(TOP)/src/crypto_wolfcrypt.c
+crypto_boring.lo:	$(TOP)/src/crypto_boring.c $(HDR)
+	$(LTCOMPILE) -c $(TOP)/src/crypto_boring.c
 crypto_bcrypt.lo:	$(TOP)/src/crypto_bcrypt.c $(HDR)
 	$(LTCOMPILE) -c $(TOP)/src/crypto_bcrypt.c
 crypto_none.lo: $(TOP)/src/crypto_none.c $(HDR)

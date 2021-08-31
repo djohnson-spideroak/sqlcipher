@@ -339,6 +339,7 @@ foreach file {
    crypto_openssl.c
    crypto_cc.c
    crypto_wolfcrypt.c
+   crypto_boring.c
    crypto_bcrypt.c
    crypto_none.c
 

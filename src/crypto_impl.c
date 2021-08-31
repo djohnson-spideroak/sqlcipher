@@ -227,6 +227,12 @@ void sqlcipher_activate() {
 #elif defined (SQLCIPHER_CRYPTO_WOLFCRYPT)
 	extern int sqlcipher_wolfcrypt_setup(sqlcipher_provider *p);
 	sqlcipher_wolfcrypt_setup(p);
+#elif defined (SQLCIPHER_CRYPTO_BORING)
+	extern int sqlcipher_boring_setup(sqlcipher_provider *p);
+	sqlcipher_boring_setup(p);
+#elif defined (SQLCIPHER_CRYPTO_BORING)
+	extern int sqlcipher_boring_setup(sqlcipher_provider *p);
+	sqlcipher_boring_setup(p);
 #elif defined (SQLCIPHER_CRYPTO_BCRYPT)
 	extern int sqlcipher_bcrypt_setup(sqlcipher_provider *p);
 	sqlcipher_bcrypt_setup(p);
