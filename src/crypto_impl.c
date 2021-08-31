@@ -167,6 +167,12 @@ void sqlcipher_activate() {
 #elif defined (SQLCIPHER_CRYPTO_WOLFCRYPT)
 	extern int sqlcipher_wolfcrypt_setup(sqlcipher_provider *p);
 	sqlcipher_wolfcrypt_setup(p);
+#elif defined (SQLCIPHER_CRYPTO_BORING)
+	extern int sqlcipher_boring_setup(sqlcipher_provider *p);
+	sqlcipher_boring_setup(p);
+#elif defined (SQLCIPHER_CRYPTO_BORING)
+	extern int sqlcipher_boring_setup(sqlcipher_provider *p);
+	sqlcipher_boring_setup(p);
 #elif defined (SQLCIPHER_CRYPTO_BCRYPT)
 	extern int sqlcipher_bcrypt_setup(sqlcipher_provider *p);
 	sqlcipher_bcrypt_setup(p);
@@ -458,7 +464,7 @@ static int sqlcipher_cipher_ctx_cmp(cipher_ctx *c1, cipher_ctx *c2) {
                   c1=%p c2=%p \
                   c1->pass_sz=%d c2->pass_sz=%d \
                   c1->pass=%p c2->pass=%p \
-                  c1->pass=%s c2->pass=%s \
+                  c1->pass=%p c2->pass=%p \
                   sqlcipher_memcmp=%d \
                   are_equal=%d \
                    \n", 
@@ -1096,7 +1102,7 @@ error:
   */
 static int sqlcipher_cipher_ctx_key_derive(codec_ctx *ctx, cipher_ctx *c_ctx) {
   int rc;
-  CODEC_TRACE("cipher_ctx_key_derive: entered c_ctx->pass=%s, c_ctx->pass_sz=%d \
+  CODEC_TRACE("cipher_ctx_key_derive: entered c_ctx->pass=%p, c_ctx->pass_sz=%d \
                 ctx->kdf_salt=%p ctx->kdf_salt_sz=%d ctx->kdf_iter=%d \
                 ctx->hmac_kdf_salt=%p, ctx->fast_kdf_iter=%d ctx->key_sz=%d\n",
                 c_ctx->pass, c_ctx->pass_sz, ctx->kdf_salt, ctx->kdf_salt_sz, ctx->kdf_iter,
