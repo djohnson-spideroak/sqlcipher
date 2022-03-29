@@ -566,15 +566,6 @@ int sqlite3SchemaToIndex(sqlite3 *db, Schema *pSchema){
 }
 
 /*
-** Deallocate a single AggInfo object
-*/
-static void agginfoFree(sqlite3 *db, AggInfo *p){
-  sqlite3DbFree(db, p->aCol);
-  sqlite3DbFree(db, p->aFunc);
-  sqlite3DbFree(db, p);
-}
-
-/*
 ** Free all memory allocations in the pParse object
 */
 void sqlite3ParserReset(Parse *pParse){
