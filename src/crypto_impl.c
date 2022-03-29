@@ -237,27 +237,26 @@ void sqlcipher_activate() {
 	extern int sqlcipher_bcrypt_setup(sqlcipher_provider *p);
 	sqlcipher_bcrypt_setup(p);
 #elif defined (SQLCIPHER_CRYPTO_CC)
-    extern int sqlcipher_cc_setup(sqlcipher_provider *p);
-    sqlcipher_cc_setup(p);
+  extern int sqlcipher_cc_setup(sqlcipher_provider *p);
+  sqlcipher_cc_setup(p);
 #elif defined (SQLCIPHER_CRYPTO_LIBTOMCRYPT)
-    extern int sqlcipher_ltc_setup(sqlcipher_provider *p);
-    sqlcipher_ltc_setup(p);
+  extern int sqlcipher_ltc_setup(sqlcipher_provider *p);
+  sqlcipher_ltc_setup(p);
 #elif defined (SQLCIPHER_CRYPTO_NSS)
-    extern int sqlcipher_nss_setup(sqlcipher_provider *p);
-    sqlcipher_nss_setup(p);
+  extern int sqlcipher_nss_setup(sqlcipher_provider *p);
+  sqlcipher_nss_setup(p);
 #elif defined (SQLCIPHER_CRYPTO_OPENSSL)
-    extern int sqlcipher_openssl_setup(sqlcipher_provider *p);
-    sqlcipher_openssl_setup(p);
+  extern int sqlcipher_openssl_setup(sqlcipher_provider *p);
+  sqlcipher_openssl_setup(p);
 #else
 #error "NO DEFAULT SQLCIPHER CRYPTO PROVIDER DEFINED"
 #endif
-    sqlcipher_log(SQLCIPHER_LOG_DEBUG, "sqlcipher_activate: calling sqlcipher_register_provider(%p)", p);
+  sqlcipher_log(SQLCIPHER_LOG_DEBUG, "sqlcipher_activate: calling sqlcipher_register_provider(%p)", p);
 #ifdef SQLCIPHER_EXT
-    sqlcipher_ext_provider_setup(p);
+  sqlcipher_ext_provider_setup(p);
 #endif
-    sqlcipher_register_provider(p);
-    sqlcipher_log(SQLCIPHER_LOG_DEBUG, "sqlcipher_activate: called sqlcipher_register_provider(%p)",p);
-  }
+  sqlcipher_register_provider(p);
+  sqlcipher_log(SQLCIPHER_LOG_DEBUG, "sqlcipher_activate: called sqlcipher_register_provider(%p)",p);
 
   sqlcipher_activate_count++; /* increment activation count */
 
