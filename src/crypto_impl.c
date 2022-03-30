@@ -1751,8 +1751,8 @@ void sqlcipher_log(unsigned int level, const char *message, ...) {
     ULARGE_INTEGER ull;
     GetSystemTime(&st);
     SystemTimeToFileTime(&st, &ft);
-    ull.LowPart = ft.dwLowDateTime
-    ull.HighPart = ft.dwHighDateTime
+    ull.LowPart = ft.dwLowDateTime;
+    ull.HighPart = ft.dwHighDateTime;
     sec = (time_t) ((ull.QuadPart - FILETIME_1970) / HECTONANOSEC_PER_SEC);
     /*sec = (time_t) ((*((sqlite_int64*)&ft) - FILETIME_1970) / HECTONANOSEC_PER_SEC);*/
     ms = st.wMilliseconds;
