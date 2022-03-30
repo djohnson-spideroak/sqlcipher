@@ -1744,9 +1744,17 @@ void sqlcipher_log(unsigned int level, const char *message, ...) {
 #ifdef _WIN32
     SYSTEMTIME st;
     FILETIME ft;
+    /* 
+    use a ULARGE_INTEGER because the pointer dereferencing below
+    doesnt compile with the -Werror=strict-aliasing flag 
+    */
+    ULARGE_INTEGER ull;
     GetSystemTime(&st);
     SystemTimeToFileTime(&st, &ft);
-    sec = (time_t) ((*((sqlite_int64*)&ft) - FILETIME_1970) / HECTONANOSEC_PER_SEC);
+    ull.LowPart = ft.dwLowDateTime
+    ull.HighPart = ft.dwHighDateTime
+    sec = (time_t) ((ull.QuadPart - FILETIME_1970) / HECTONANOSEC_PER_SEC);
+    /*sec = (time_t) ((*((sqlite_int64*)&ft) - FILETIME_1970) / HECTONANOSEC_PER_SEC);*/
     ms = st.wMilliseconds;
     localtime_s(&tt, &sec);
 #else
@@ -1796,7 +1804,7 @@ int sqlcipher_set_log(const char *destination){
     sqlcipher_log_file = stderr;
   }else if(sqlite3_stricmp(destination, "off") != 0){
 #if !defined(SQLCIPHER_PROFILE_USE_FOPEN) && (defined(_WIN32) && (__STDC_VERSION__ > 199901L) || defined(SQLITE_OS_WINRT))
-    if(fopen_s(&sqlcipher_log_file, destination, "a") != 0) return SQLITE_ERROR;
+    if(fopen_s(&((FILE*)sqlcipher_log_file), destination, "a") != 0) return SQLITE_ERROR;
 #else
     if((sqlcipher_log_file = fopen(destination, "a")) == 0) return SQLITE_ERROR;
 #endif
