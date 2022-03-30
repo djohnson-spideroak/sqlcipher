@@ -1804,7 +1804,10 @@ int sqlcipher_set_log(const char *destination){
     sqlcipher_log_file = stderr;
   }else if(sqlite3_stricmp(destination, "off") != 0){
 #if !defined(SQLCIPHER_PROFILE_USE_FOPEN) && (defined(_WIN32) && (__STDC_VERSION__ > 199901L) || defined(SQLITE_OS_WINRT))
-    if(fopen_s(&((FILE*)sqlcipher_log_file), destination, "a") != 0) return SQLITE_ERROR;
+    // create a non-volatile FILE* for use with fopen_s
+    // we need to do this because we use more strict compile flags
+    FILE* nv_sqlcipher_log_file = (FILE*)sqlcipher_log_file;
+    if(fopen_s(&nv_sqlcipher_log_file, destination, "a") != 0) return SQLITE_ERROR;
 #else
     if((sqlcipher_log_file = fopen(destination, "a")) == 0) return SQLITE_ERROR;
 #endif
